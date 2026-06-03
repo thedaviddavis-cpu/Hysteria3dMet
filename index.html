@@ -21,14 +21,14 @@
         .bpm { color: #00ffcc; font-size: 2.5em; text-shadow: 0 0 25px #00ffcc; }
 
         button {
-            position: absolute; bottom: 95px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
             padding: 15px 45px; background: #e60012; color: white; border: none;
             border-radius: 50px; font-size: 19px; font-weight: bold; cursor: pointer; 
             z-index: 100; box-shadow: 0 0 25px rgba(230,0,18,0.8);
         }
 
         #controls {
-            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
             z-index: 100; width: 380px; text-align: center;
         }
         #dio-container {
@@ -38,7 +38,7 @@
         }
         #dio-low, #dio-high {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            object-fit: cover; transition: opacity 0.2s ease;
+            object-fit: cover; transition: opacity 0.3s ease;
         }
         #volume-label {
             color: #ffaa00; font-size: 1.1em; margin-bottom: 6px; font-weight: bold;
@@ -59,8 +59,8 @@
     <div id="controls">
         <div id="volume-label">VOLUME — DIO APPROVES</div>
         <div id="dio-container">
-            <img id="dio-low" src="./dio-low.jpg" alt="Dio low volume">
-            <img id="dio-high" src="./dio-high.jpg" alt="Dio high volume">
+            <img id="dio-low" src="./dio-low.jpg" alt="Dio">
+            <img id="dio-high" src="./dio-high.jpg" alt="Dio">
         </div>
         <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
     </div>
@@ -74,9 +74,6 @@
         let lastClickTime = 0;
         let lastFrameTime = 0;
         let volume = 0.7;
-
-        init();
-        animate();
 
         function init() {
             scene = new THREE.Scene();
@@ -114,43 +111,22 @@
             sword.position.set(0, 1, 0);
             scene.add(sword);
 
-            // 3D rock girls
             createCharacter(12, 4, -8, 0.6);
             createCharacter(-13, 4, -6, -0.5);
 
-            // Volume slider + Dio eyes
-            const slider = document.getElementById('volumeSlider');
-            slider.addEventListener('input', (e) => {
-                volume = parseFloat(e.target.value);
-                updateDioEyes();
-            });
-
-            // Start button - FIXED
-            document.getElementById('toggleBtn').addEventListener('click', () => {
-                isRunning = !isRunning;
-                const btn = document.getElementById('toggleBtn');
-                btn.textContent = isRunning ? "STOP THE RIFF" : "START THE RIFF";
-                btn.style.background = isRunning ? "#00cc66" : "#e60012";
-            });
-
             window.addEventListener('resize', onResize);
-            updateDioEyes();
         }
 
         function createCharacter(x, y, z, rotation) {
             const group = new THREE.Group();
             const body = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 16), new THREE.MeshPhongMaterial({ color: 0x222222 }));
             body.position.y = 3.5; group.add(body);
-
             const head = new THREE.Mesh(new THREE.SphereGeometry(1.4, 24, 24), new THREE.MeshPhongMaterial({ color: 0xffddbb }));
             head.position.y = 7.2; group.add(head);
-
             const hair = new THREE.Mesh(new THREE.SphereGeometry(1.5, 24, 24), new THREE.MeshPhongMaterial({ color: 0x111111 }));
             hair.position.y = 7.6; group.add(hair);
-
             const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 4, 12), new THREE.MeshPhongMaterial({ color: 0x222222 }));
             armL.position.set(-2.2, 4, 0); armL.rotation.z = 0.8; group.add(armL);
-
             const armR = armL.clone(); armR.position.x = 2.2; armR.rotation.z = -0.8; group.add(armR);
 
             group.position.set(x, y, z);
@@ -165,17 +141,15 @@
         }
 
         function updateDioEyes() {
-            const low = document.getElementById('dio-low');
-            const high = document.getElementById('dio-high');
-            high.style.opacity = volume;
-            low.style.opacity = 1 - volume;
+            document.getElementById('dio-high').style.opacity = volume;
+            document.getElementById('dio-low').style.opacity = 1 - volume;
         }
 
         function playSnare() {
-            const now = Date.now();
-            if (now - lastClickTime < 380) return;
-            lastClickTime = now;
+            if (Date.now() - lastClickTime < 380) return;
+            lastClickTime = Date.now();
 
+            // Snare sound with current volume
             const noise = audioContext.createBufferSource();
             const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.45, audioContext.sampleRate);
             const data = buffer.getChannelData(0);
@@ -183,7 +157,8 @@
             noise.buffer = buffer;
 
             const filter = audioContext.createBiquadFilter();
-            filter.type = 'highpass'; filter.frequency.value = 700;
+            filter.type = 'highpass';
+            filter.frequency.value = 700;
 
             const gain = audioContext.createGain();
             gain.gain.setValueAtTime(1.4 * volume, audioContext.currentTime);
@@ -191,16 +166,6 @@
 
             noise.connect(filter).connect(gain).connect(audioContext.destination);
             noise.start();
-
-            const tone = audioContext.createOscillator();
-            tone.frequency.setValueAtTime(160, audioContext.currentTime);
-            tone.frequency.exponentialRampToValueAtTime(60, audioContext.currentTime + 0.25);
-            const toneGain = audioContext.createGain();
-            toneGain.gain.setValueAtTime(0.8 * volume, audioContext.currentTime);
-            toneGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
-            tone.connect(toneGain).connect(audioContext.destination);
-            tone.start();
-            tone.stop(audioContext.currentTime + 0.3);
 
             for (let i = 0; i < 10; i++) createFlame();
         }
@@ -243,9 +208,30 @@
             renderer.render(scene, camera);
         }
 
-        document.addEventListener('keydown', e => {
-            if (e.code === 'Space') document.getElementById('toggleBtn').click();
+        // === Event Listeners (outside init) ===
+        document.getElementById('toggleBtn').addEventListener('click', () => {
+            isRunning = !isRunning;
+            const btn = document.getElementById('toggleBtn');
+            btn.textContent = isRunning ? "STOP THE RIFF" : "START THE RIFF";
+            btn.style.background = isRunning ? "#00cc66" : "#e60012";
         });
+
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+            volume = parseFloat(e.target.value);
+            updateDioEyes();
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                document.getElementById('toggleBtn').click();
+            }
+        });
+
+        // Start everything
+        init();
+        animate();
+        updateDioEyes();
     </script>
 </body>
 </html>
