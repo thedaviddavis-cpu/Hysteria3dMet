@@ -21,15 +21,16 @@
         .bpm { color: #00ffcc; font-size: 2.5em; text-shadow: 0 0 25px #00ffcc; }
 
         button {
-            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-            padding: 15px 45px; background: #e60012; color: white; border: none;
-            border-radius: 50px; font-size: 19px; font-weight: bold; cursor: pointer; 
+            position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+            padding: 16px 50px; background: #e60012; color: white; border: none;
+            border-radius: 50px; font-size: 20px; font-weight: bold; cursor: pointer; 
             z-index: 100; box-shadow: 0 0 25px rgba(230,0,18,0.8);
         }
+        button:hover { background: #ff1a1a; }
 
         #controls {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 100; width: 380px; text-align: center;
+            z-index: 100; width: 400px; text-align: center;
         }
         #dio-container {
             position: relative; width: 170px; height: 170px; margin: 0 auto 8px;
@@ -41,10 +42,16 @@
             object-fit: cover; transition: opacity 0.3s ease;
         }
         #volume-label {
-            color: #ffaa00; font-size: 1.1em; margin-bottom: 6px; font-weight: bold;
+            color: #ffaa00; font-size: 1.2em; margin-bottom: 6px; font-weight: bold;
+        }
+        .slider-container {
+            display: flex; align-items: center; gap: 10px;
         }
         input[type="range"] {
-            width: 100%; accent-color: #ff0033;
+            flex: 1; accent-color: #ff0033;
+        }
+        .slider-labels {
+            display: flex; justify-content: space-between; color: #888; font-size: 0.9em; margin-top: 4px;
         }
     </style>
 </head>
@@ -59,10 +66,18 @@
     <div id="controls">
         <div id="volume-label">VOLUME — DIO APPROVES</div>
         <div id="dio-container">
-            <img id="dio-low" src="./dio-low.jpg" alt="Dio">
-            <img id="dio-high" src="./dio-high.jpg" alt="Dio">
+            <img id="dio-low" src="./dio-low.jpg" alt="Dio low">
+            <img id="dio-high" src="./dio-high.jpg" alt="Dio high">
         </div>
-        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
+        <div class="slider-container">
+            <span>🔈</span>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
+            <span>🔊</span>
+        </div>
+        <div class="slider-labels">
+            <span>Quiet</span>
+            <span>Loud</span>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
@@ -117,7 +132,7 @@
             window.addEventListener('resize', onResize);
         }
 
-        function createCharacter(x, y, z, rotation) {
+        function createCharacter(x, y, z, rotation) { /* same as before */ 
             const group = new THREE.Group();
             const body = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 16), new THREE.MeshPhongMaterial({ color: 0x222222 }));
             body.position.y = 3.5; group.add(body);
@@ -149,7 +164,6 @@
             if (Date.now() - lastClickTime < 380) return;
             lastClickTime = Date.now();
 
-            // Snare sound with current volume
             const noise = audioContext.createBufferSource();
             const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.45, audioContext.sampleRate);
             const data = buffer.getChannelData(0);
@@ -157,8 +171,7 @@
             noise.buffer = buffer;
 
             const filter = audioContext.createBiquadFilter();
-            filter.type = 'highpass';
-            filter.frequency.value = 700;
+            filter.type = 'highpass'; filter.frequency.value = 700;
 
             const gain = audioContext.createGain();
             gain.gain.setValueAtTime(1.4 * volume, audioContext.currentTime);
@@ -208,12 +221,17 @@
             renderer.render(scene, camera);
         }
 
-        // === Event Listeners (outside init) ===
-        document.getElementById('toggleBtn').addEventListener('click', () => {
+        // Button & Slider Setup
+        document.getElementById('toggleBtn').addEventListener('click', function() {
             isRunning = !isRunning;
             const btn = document.getElementById('toggleBtn');
-            btn.textContent = isRunning ? "STOP THE RIFF" : "START THE RIFF";
-            btn.style.background = isRunning ? "#00cc66" : "#e60012";
+            if (isRunning) {
+                btn.textContent = "STOP THE RIFF";
+                btn.style.background = "#00cc66";
+            } else {
+                btn.textContent = "START THE RIFF";
+                btn.style.background = "#e60012";
+            }
         });
 
         document.getElementById('volumeSlider').addEventListener('input', (e) => {
@@ -228,7 +246,7 @@
             }
         });
 
-        // Start everything
+        // Start the app
         init();
         animate();
         updateDioEyes();
