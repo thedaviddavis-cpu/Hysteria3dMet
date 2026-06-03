@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hysteria 3D Flaming Sword Metronome</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hysteria 3D Metronome</title>
     <style>
         body { 
             margin: 0; 
@@ -11,29 +11,31 @@
             background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.95)), 
                         url('https://thedaviddavis-cpu.github.io/hysteria-metronome/hysteria.png') center/cover fixed;
             font-family: Arial, sans-serif; 
+            touch-action: manipulation;
         }
         #info {
-            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             color: white; text-align: center; z-index: 100; pointer-events: none;
         }
-        .muse { color: #ff0033; font-size: 3.2em; font-weight: bold; text-shadow: 0 0 30px #ff0033; }
-        .hysteria { color: #ffaa00; font-size: 1.6em; margin: 5px 0 10px 0; letter-spacing: 6px; }
-        .bpm { color: #00ffcc; font-size: 2.5em; text-shadow: 0 0 25px #00ffcc; }
+        .muse { color: #ff0033; font-size: 2.6em; font-weight: bold; text-shadow: 0 0 25px #ff0033; }
+        .hysteria { color: #ffaa00; font-size: 1.3em; margin: 4px 0 8px 0; letter-spacing: 4px; }
+        .bpm { color: #00ffcc; font-size: 2.1em; text-shadow: 0 0 20px #00ffcc; }
 
         #toggleBtn {
-            position: absolute; top: 30px; right: 30px;
-            padding: 16px 50px; background: #e60012; color: white; border: none;
-            border-radius: 50px; font-size: 20px; font-weight: bold; cursor: pointer; 
-            z-index: 200; box-shadow: 0 0 25px rgba(230,0,18,0.9);
+            position: absolute; top: 20px; right: 20px;
+            padding: 14px 32px; background: #e60012; color: white; border: none;
+            border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; 
+            z-index: 200; box-shadow: 0 0 20px rgba(230,0,18,0.9);
+            min-width: 160px;
         }
-        #toggleBtn:hover { background: #ff1a1a; }
+        #toggleBtn:hover, #toggleBtn:active { background: #ff1a1a; }
 
         #controls {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 100; width: 400px; text-align: center;
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            z-index: 100; width: 90%; max-width: 380px; text-align: center;
         }
         #dio-container {
-            position: relative; width: 170px; height: 170px; margin: 0 auto 8px;
+            position: relative; width: 140px; height: 140px; margin: 0 auto 10px;
             border-radius: 50%; overflow: hidden; border: 4px solid #ffaa00;
             box-shadow: 0 0 20px #ff5500;
         }
@@ -42,13 +44,13 @@
             object-fit: cover; transition: opacity 0.3s ease;
         }
         #volume-label {
-            color: #ffaa00; font-size: 1.2em; margin-bottom: 6px; font-weight: bold;
+            color: #ffaa00; font-size: 1.1em; margin-bottom: 8px; font-weight: bold;
         }
         .slider-container {
-            display: flex; align-items: center; gap: 12px;
+            display: flex; align-items: center; gap: 12px; padding: 0 10px;
         }
         input[type="range"] {
-            flex: 1; accent-color: #ff0033;
+            flex: 1; accent-color: #ff0033; height: 8px;
         }
         .slider-labels {
             display: flex; justify-content: space-between; color: #888; font-size: 0.9em; margin-top: 4px;
@@ -70,9 +72,9 @@
             <img id="dio-high" src="./dio-high.jpg" alt="Dio high">
         </div>
         <div class="slider-container">
-            <span>🔈</span>
+            <span style="font-size:1.4em">🔈</span>
             <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
-            <span>🔊</span>
+            <span style="font-size:1.4em">🔊</span>
         </div>
         <div class="slider-labels">
             <span>Quiet</span>
@@ -89,15 +91,16 @@
         let lastClickTime = 0;
         let lastFrameTime = 0;
         let volume = 0.7;
+        let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
         function init() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 9, 28);
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, isMobile ? 11 : 9, isMobile ? 32 : 28);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
             document.body.appendChild(renderer.domElement);
 
             scene.add(new THREE.AmbientLight(0x442222));
@@ -134,16 +137,12 @@
 
         function createCharacter(x, y, z, rotation) {
             const group = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 16), new THREE.MeshPhongMaterial({ color: 0x222222 }));
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 12), new THREE.MeshPhongMaterial({ color: 0x222222 }));
             body.position.y = 3.5; group.add(body);
-            const head = new THREE.Mesh(new THREE.SphereGeometry(1.4, 24, 24), new THREE.MeshPhongMaterial({ color: 0xffddbb }));
+            const head = new THREE.Mesh(new THREE.SphereGeometry(1.4, 20, 20), new THREE.MeshPhongMaterial({ color: 0xffddbb }));
             head.position.y = 7.2; group.add(head);
-            const hair = new THREE.Mesh(new THREE.SphereGeometry(1.5, 24, 24), new THREE.MeshPhongMaterial({ color: 0x111111 }));
+            const hair = new THREE.Mesh(new THREE.SphereGeometry(1.5, 20, 20), new THREE.MeshPhongMaterial({ color: 0x111111 }));
             hair.position.y = 7.6; group.add(hair);
-            const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 4, 12), new THREE.MeshPhongMaterial({ color: 0x222222 }));
-            armL.position.set(-2.2, 4, 0); armL.rotation.z = 0.8; group.add(armL);
-            const armR = armL.clone(); armR.position.x = 2.2; armR.rotation.z = -0.8; group.add(armR);
-
             group.position.set(x, y, z);
             group.rotation.y = rotation;
             scene.add(group);
@@ -165,7 +164,7 @@
             lastClickTime = Date.now();
 
             const noise = audioContext.createBufferSource();
-            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.45, audioContext.sampleRate);
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.4, audioContext.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
             noise.buffer = buffer;
@@ -174,19 +173,17 @@
             filter.type = 'highpass'; filter.frequency.value = 700;
 
             const gain = audioContext.createGain();
-            gain.gain.setValueAtTime(1.4 * volume, audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.38);
+            gain.gain.setValueAtTime(1.3 * volume, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.35);
 
             noise.connect(filter).connect(gain).connect(audioContext.destination);
             noise.start();
-
-            for (let i = 0; i < 10; i++) createFlame();
         }
 
         function createFlame() {
             const flame = new THREE.Mesh(
-                new THREE.SphereGeometry(0.8 + Math.random() * 0.6, 16, 16),
-                new THREE.MeshBasicMaterial({ color: Math.random() > 0.4 ? 0xff5500 : 0xffee00, transparent: true, opacity: 0.95 })
+                new THREE.SphereGeometry(0.7 + Math.random() * 0.5, 12, 12),
+                new THREE.MeshBasicMaterial({ color: Math.random() > 0.4 ? 0xff5500 : 0xffee00, transparent: true, opacity: 0.9 })
             );
             flame.position.set((Math.random() - 0.5) * 2, 19 + Math.random() * 5, (Math.random() - 0.5) * 1);
             scene.add(flame);
@@ -199,19 +196,20 @@
             lastFrameTime = timestamp;
 
             if (isRunning) {
-                swingAngle += 0.086 * delta;
+                swingAngle += 0.088 * delta;
                 sword.rotation.z = Math.sin(swingAngle) * 0.82;
 
                 if (Math.abs(Math.sin(swingAngle)) > 0.93) {
                     playSnare();
+                    if (Math.random() > 0.4) createFlame();
                 }
             }
 
             for (let i = flames.length - 1; i >= 0; i--) {
                 const f = flames[i];
                 f.position.y += 0.45;
-                f.scale.multiplyScalar(0.91);
-                f.material.opacity *= 0.86;
+                f.scale.multiplyScalar(0.92);
+                f.material.opacity *= 0.88;
                 if (f.material.opacity < 0.05) {
                     scene.remove(f);
                     flames.splice(i, 1);
@@ -221,7 +219,7 @@
             renderer.render(scene, camera);
         }
 
-        // ====================== EVENT LISTENERS ======================
+        // Event Listeners
         document.getElementById('toggleBtn').addEventListener('click', () => {
             isRunning = !isRunning;
             const btn = document.getElementById('toggleBtn');
@@ -241,7 +239,7 @@
             }
         });
 
-        // Initialize everything
+        // Start
         init();
         animate();
         updateDioEyes();
