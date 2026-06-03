@@ -21,25 +21,31 @@
         .bpm { color: #00ffcc; font-size: 2.5em; text-shadow: 0 0 25px #00ffcc; }
 
         button {
-            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 95px; left: 50%; transform: translateX(-50%);
             padding: 15px 45px; background: #e60012; color: white; border: none;
             border-radius: 50px; font-size: 19px; font-weight: bold; cursor: pointer; 
             z-index: 100; box-shadow: 0 0 25px rgba(230,0,18,0.8);
         }
 
         #controls {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
             z-index: 100; width: 380px; text-align: center;
         }
         #dio-container {
-            position: relative; width: 180px; height: 180px; margin: 0 auto 10px;
+            position: relative; width: 170px; height: 170px; margin: 0 auto 8px;
+            border-radius: 50%; overflow: hidden; border: 4px solid #ffaa00;
+            box-shadow: 0 0 20px #ff5500;
         }
-        #dio {
-            width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
-            border: 5px solid #ffaa00; box-shadow: 0 0 25px #ff5500;
+        #dio-low, #dio-high {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; transition: opacity 0.2s ease;
         }
-        #volume-label { color: #ffaa00; font-size: 1.1em; margin-bottom: 5px; }
-        input[type="range"] { width: 100%; accent-color: #ff0033; }
+        #volume-label {
+            color: #ffaa00; font-size: 1.1em; margin-bottom: 6px; font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%; accent-color: #ff0033;
+        }
     </style>
 </head>
 <body>
@@ -53,14 +59,15 @@
     <div id="controls">
         <div id="volume-label">VOLUME — DIO APPROVES</div>
         <div id="dio-container">
-            <img id="dio" src="dio.jpg" alt="Ronnie James Dio">
+            <img id="dio-low" src="./dio-low.jpg" alt="Dio low volume">
+            <img id="dio-high" src="./dio-high.jpg" alt="Dio high volume">
         </div>
         <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
-        let scene, camera, renderer, sword, flames = [], characters = [];
+        let scene, camera, renderer, sword, flames = [];
         let isRunning = false;
         let swingAngle = 0;
         let audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -107,29 +114,45 @@
             sword.position.set(0, 1, 0);
             scene.add(sword);
 
+            // 3D rock girls
             createCharacter(12, 4, -8, 0.6);
             createCharacter(-13, 4, -6, -0.5);
 
-            // Volume control
+            // Volume slider + Dio eyes
             const slider = document.getElementById('volumeSlider');
             slider.addEventListener('input', (e) => {
                 volume = parseFloat(e.target.value);
+                updateDioEyes();
+            });
+
+            // Start button - FIXED
+            document.getElementById('toggleBtn').addEventListener('click', () => {
+                isRunning = !isRunning;
+                const btn = document.getElementById('toggleBtn');
+                btn.textContent = isRunning ? "STOP THE RIFF" : "START THE RIFF";
+                btn.style.background = isRunning ? "#00cc66" : "#e60012";
             });
 
             window.addEventListener('resize', onResize);
+            updateDioEyes();
         }
 
-        function createCharacter(x, y, z, rotation) { /* same as before */ 
+        function createCharacter(x, y, z, rotation) {
             const group = new THREE.Group();
             const body = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 16), new THREE.MeshPhongMaterial({ color: 0x222222 }));
             body.position.y = 3.5; group.add(body);
+
             const head = new THREE.Mesh(new THREE.SphereGeometry(1.4, 24, 24), new THREE.MeshPhongMaterial({ color: 0xffddbb }));
             head.position.y = 7.2; group.add(head);
+
             const hair = new THREE.Mesh(new THREE.SphereGeometry(1.5, 24, 24), new THREE.MeshPhongMaterial({ color: 0x111111 }));
             hair.position.y = 7.6; group.add(hair);
+
             const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 4, 12), new THREE.MeshPhongMaterial({ color: 0x222222 }));
             armL.position.set(-2.2, 4, 0); armL.rotation.z = 0.8; group.add(armL);
+
             const armR = armL.clone(); armR.position.x = 2.2; armR.rotation.z = -0.8; group.add(armR);
+
             group.position.set(x, y, z);
             group.rotation.y = rotation;
             scene.add(group);
@@ -139,6 +162,13 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function updateDioEyes() {
+            const low = document.getElementById('dio-low');
+            const high = document.getElementById('dio-high');
+            high.style.opacity = volume;
+            low.style.opacity = 1 - volume;
         }
 
         function playSnare() {
@@ -212,14 +242,6 @@
 
             renderer.render(scene, camera);
         }
-
-        // Start/Stop Button
-        document.getElementById('toggleBtn').addEventListener('click', () => {
-            isRunning = !isRunning;
-            const btn = document.getElementById('toggleBtn');
-            btn.textContent = isRunning ? "STOP THE RIFF" : "START THE RIFF";
-            btn.style.background = isRunning ? "#00cc66" : "#e60012";
-        });
 
         document.addEventListener('keydown', e => {
             if (e.code === 'Space') document.getElementById('toggleBtn').click();
