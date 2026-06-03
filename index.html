@@ -5,19 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hysteria 3D Metronome</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: Arial, sans-serif; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.95)), 
+                        url('https://thedaviddavis-cpu.github.io/hysteria-metronome/hysteria.png') center/cover fixed;
+            font-family: Arial, sans-serif; 
+        }
         #info {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
             color: white; text-align: center; z-index: 100; pointer-events: none;
         }
-        .muse { color: #ff0033; font-size: 3em; font-weight: bold; text-shadow: 0 0 20px #ff0033; }
-        .hysteria { color: #ddd; font-size: 1.4em; margin: 5px 0 15px 0; letter-spacing: 3px; }
-        .bpm { color: #00ffcc; font-size: 2.4em; text-shadow: 0 0 20px #00ffcc; }
+        .muse { color: #ff0033; font-size: 3.2em; font-weight: bold; text-shadow: 0 0 25px #ff0033; }
+        .hysteria { color: #ccc; font-size: 1.5em; margin: 5px 0 10px 0; letter-spacing: 4px; }
+        .bpm { color: #00ffcc; font-size: 2.5em; text-shadow: 0 0 25px #00ffcc; }
+        
         button {
             position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-            padding: 14px 40px; background: #e60012; color: white; border: none;
-            border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; z-index: 100;
+            padding: 15px 45px; background: #e60012; color: white; border: none;
+            border-radius: 50px; font-size: 19px; font-weight: bold; cursor: pointer; 
+            z-index: 100; box-shadow: 0 0 20px rgba(230,0,18,0.6);
         }
+        button:hover { background: #ff0033; }
     </style>
 </head>
 <body>
@@ -34,82 +43,94 @@
         let isRunning = false;
         let swingAngle = 0;
         let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let lastClickTime = 0;
+        let lastFrameTime = 0;
 
         init();
         animate();
 
         function init() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 6, 20);
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 7, 22);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             document.body.appendChild(renderer.domElement);
 
-            // Lights
-            scene.add(new THREE.AmbientLight(0x404040));
-            const light = new THREE.PointLight(0xffffff, 1.4, 100);
-            light.position.set(10, 25, 20);
+            scene.add(new THREE.AmbientLight(0x666666));
+            const light = new THREE.PointLight(0xffffff, 1.8, 100);
+            light.position.set(5, 30, 25);
             scene.add(light);
 
             // Base
             const base = new THREE.Mesh(
-                new THREE.BoxGeometry(10, 1, 8),
-                new THREE.MeshPhongMaterial({ color: 0x1a1a1a })
+                new THREE.BoxGeometry(12, 1.5, 10),
+                new THREE.MeshPhongMaterial({ color: 0x111111 })
             );
-            base.position.y = 0.5;
+            base.position.y = 0.75;
             scene.add(base);
 
             // Pendulum arm
             pendulum = new THREE.Mesh(
-                new THREE.BoxGeometry(0.4, 14, 0.4),
-                new THREE.MeshPhongMaterial({ color: 0x888888, shininess: 60 })
+                new THREE.BoxGeometry(0.4, 15, 0.4),
+                new THREE.MeshPhongMaterial({ color: 0xaaaaaa, shininess: 80 })
             );
-            pendulum.position.set(0, 8, 0);
+            pendulum.position.set(0, 9, 0);
             scene.add(pendulum);
 
             // Weight
             weight = new THREE.Mesh(
-                new THREE.SphereGeometry(1.4, 32, 32),
-                new THREE.MeshPhongMaterial({ color: 0xff0033, emissive: 0x330000, shininess: 100 })
+                new THREE.SphereGeometry(1.5, 32, 32),
+                new THREE.MeshPhongMaterial({ 
+                    color: 0xff0033, 
+                    emissive: 0x330000, 
+                    shininess: 100 
+                })
             );
-            weight.position.set(0, 1, 0);
+            weight.position.set(0, 1.2, 0);
             pendulum.add(weight);
 
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
+            window.addEventListener('resize', onResize);
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function playClick() {
+            const now = Date.now();
+            if (now - lastClickTime < 400) return;
+            lastClickTime = now;
+
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
-            osc.type = 'square';
-            osc.frequency.value = 1150;
-            gain.gain.value = 0.5;
-            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.07);
+            osc.type = 'sine';
+            osc.frequency.value = 1050;
+            gain.gain.value = 0.55;
+            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.08);
             osc.connect(gain);
             gain.connect(audioContext.destination);
             osc.start();
-            osc.stop(audioContext.currentTime + 0.07);
+            osc.stop(audioContext.currentTime + 0.08);
         }
 
-        function animate() {
+        function animate(timestamp = 0) {
             requestAnimationFrame(animate);
 
-            if (isRunning) {
-                swingAngle += 0.085;
-                pendulum.rotation.z = Math.sin(swingAngle) * 0.75;
+            const delta = Math.min((timestamp - lastFrameTime) / 16, 3); // Smooth delta
+            lastFrameTime = timestamp;
 
-                if (Math.abs(Math.sin(swingAngle)) > 0.92) {
-                    if (!window.lastClick || Date.now() - window.lastClick > 500) {
-                        playClick();
-                        window.lastClick = Date.now();
-                    }
+            if (isRunning) {
+                swingAngle += 0.085 * delta;
+                pendulum.rotation.z = Math.sin(swingAngle) * 0.78;
+
+                // Click at extremes
+                if (Math.abs(Math.sin(swingAngle)) > 0.93) {
+                    playClick();
                 }
             }
 
