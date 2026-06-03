@@ -19,14 +19,27 @@
         .muse { color: #ff0033; font-size: 3.2em; font-weight: bold; text-shadow: 0 0 30px #ff0033; }
         .hysteria { color: #ffaa00; font-size: 1.6em; margin: 5px 0 10px 0; letter-spacing: 6px; }
         .bpm { color: #00ffcc; font-size: 2.5em; text-shadow: 0 0 25px #00ffcc; }
-        
+
         button {
-            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
             padding: 15px 45px; background: #e60012; color: white; border: none;
             border-radius: 50px; font-size: 19px; font-weight: bold; cursor: pointer; 
             z-index: 100; box-shadow: 0 0 25px rgba(230,0,18,0.8);
         }
-        button:hover { background: #ff1a1a; }
+
+        #controls {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 100; width: 380px; text-align: center;
+        }
+        #dio-container {
+            position: relative; width: 180px; height: 180px; margin: 0 auto 10px;
+        }
+        #dio {
+            width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+            border: 5px solid #ffaa00; box-shadow: 0 0 25px #ff5500;
+        }
+        #volume-label { color: #ffaa00; font-size: 1.1em; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; accent-color: #ff0033; }
     </style>
 </head>
 <body>
@@ -37,22 +50,31 @@
     </div>
     <button id="toggleBtn">START THE RIFF</button>
 
+    <div id="controls">
+        <div id="volume-label">VOLUME — DIO APPROVES</div>
+        <div id="dio-container">
+            <img id="dio" src="dio.jpg" alt="Ronnie James Dio">
+        </div>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
-        let scene, camera, renderer, sword, flames = [];
+        let scene, camera, renderer, sword, flames = [], characters = [];
         let isRunning = false;
         let swingAngle = 0;
         let audioContext = new (window.AudioContext || window.webkitAudioContext)();
         let lastClickTime = 0;
         let lastFrameTime = 0;
+        let volume = 0.7;
 
         init();
         animate();
 
         function init() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 8, 25);
+            camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 9, 28);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -60,46 +82,24 @@
             document.body.appendChild(renderer.domElement);
 
             scene.add(new THREE.AmbientLight(0x442222));
-            const light = new THREE.PointLight(0xff5500, 2.8, 100);
-            light.position.set(0, 20, 15);
+            const light = new THREE.PointLight(0xff5500, 3, 100);
+            light.position.set(0, 25, 20);
             scene.add(light);
 
-            // Base
-            const base = new THREE.Mesh(
-                new THREE.BoxGeometry(14, 2, 12),
-                new THREE.MeshPhongMaterial({ color: 0x111111 })
-            );
+            const base = new THREE.Mesh(new THREE.BoxGeometry(18, 2, 14), new THREE.MeshPhongMaterial({ color: 0x111111 }));
             base.position.y = 1;
             scene.add(base);
 
-            // Sword Group
             sword = new THREE.Group();
-
-            // Long blade
-            const blade = new THREE.Mesh(
-                new THREE.BoxGeometry(0.9, 20, 0.18),
-                new THREE.MeshPhongMaterial({ 
-                    color: 0xdddddd, 
-                    emissive: 0xff2200,
-                    shininess: 120 
-                })
-            );
-            blade.position.y = 10;
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(1, 22, 0.2), new THREE.MeshPhongMaterial({ color: 0xeeeeee, emissive: 0xff2200, shininess: 100 }));
+            blade.position.y = 11;
             sword.add(blade);
 
-            // Guard
-            const guard = new THREE.Mesh(
-                new THREE.BoxGeometry(3.5, 1, 1),
-                new THREE.MeshPhongMaterial({ color: 0x222222 })
-            );
-            guard.position.y = 5;
+            const guard = new THREE.Mesh(new THREE.BoxGeometry(4, 1.2, 1.2), new THREE.MeshPhongMaterial({ color: 0x222222 }));
+            guard.position.y = 5.5;
             sword.add(guard);
 
-            // Handle
-            const handle = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.45, 0.45, 6, 16),
-                new THREE.MeshPhongMaterial({ color: 0x111111 })
-            );
+            const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 7, 16), new THREE.MeshPhongMaterial({ color: 0x111111 }));
             handle.rotation.x = Math.PI / 2;
             handle.position.y = 2;
             sword.add(handle);
@@ -107,20 +107,32 @@
             sword.position.set(0, 1, 0);
             scene.add(sword);
 
-            // 🔥 Hot rock girl on the side
-            const girlTexture = new THREE.TextureLoader().load('https://picsum.photos/id/1011/400/600');
-            const girl = new THREE.Mesh(
-                new THREE.PlaneGeometry(6, 9),
-                new THREE.MeshBasicMaterial({ 
-                    map: girlTexture, 
-                    side: THREE.DoubleSide 
-                })
-            );
-            girl.position.set(12, 6, -5);
-            girl.rotation.y = -0.6;
-            scene.add(girl);
+            createCharacter(12, 4, -8, 0.6);
+            createCharacter(-13, 4, -6, -0.5);
+
+            // Volume control
+            const slider = document.getElementById('volumeSlider');
+            slider.addEventListener('input', (e) => {
+                volume = parseFloat(e.target.value);
+            });
 
             window.addEventListener('resize', onResize);
+        }
+
+        function createCharacter(x, y, z, rotation) { /* same as before */ 
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 16), new THREE.MeshPhongMaterial({ color: 0x222222 }));
+            body.position.y = 3.5; group.add(body);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(1.4, 24, 24), new THREE.MeshPhongMaterial({ color: 0xffddbb }));
+            head.position.y = 7.2; group.add(head);
+            const hair = new THREE.Mesh(new THREE.SphereGeometry(1.5, 24, 24), new THREE.MeshPhongMaterial({ color: 0x111111 }));
+            hair.position.y = 7.6; group.add(hair);
+            const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 4, 12), new THREE.MeshPhongMaterial({ color: 0x222222 }));
+            armL.position.set(-2.2, 4, 0); armL.rotation.z = 0.8; group.add(armL);
+            const armR = armL.clone(); armR.position.x = 2.2; armR.rotation.z = -0.8; group.add(armR);
+            group.position.set(x, y, z);
+            group.rotation.y = rotation;
+            scene.add(group);
         }
 
         function onResize() {
@@ -131,82 +143,68 @@
 
         function playSnare() {
             const now = Date.now();
-            if (now - lastClickTime < 400) return;
+            if (now - lastClickTime < 380) return;
             lastClickTime = now;
 
-            // Snare drum synthesis
             const noise = audioContext.createBufferSource();
-            const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.4, audioContext.sampleRate);
-            const data = noiseBuffer.getChannelData(0);
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.45, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
             for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-            noise.buffer = noiseBuffer;
+            noise.buffer = buffer;
 
-            const noiseFilter = audioContext.createBiquadFilter();
-            noiseFilter.type = 'highpass';
-            noiseFilter.frequency.value = 800;
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass'; filter.frequency.value = 700;
 
-            const noiseGain = audioContext.createGain();
-            noiseGain.gain.setValueAtTime(1.2, audioContext.currentTime);
-            noiseGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.35);
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(1.4 * volume, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.38);
+
+            noise.connect(filter).connect(gain).connect(audioContext.destination);
+            noise.start();
 
             const tone = audioContext.createOscillator();
-            tone.type = 'triangle';
-            tone.frequency.value = 180;
-
+            tone.frequency.setValueAtTime(160, audioContext.currentTime);
+            tone.frequency.exponentialRampToValueAtTime(60, audioContext.currentTime + 0.25);
             const toneGain = audioContext.createGain();
-            toneGain.gain.setValueAtTime(0.6, audioContext.currentTime);
-            toneGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.25);
-
-            noise.connect(noiseFilter).connect(noiseGain).connect(audioContext.destination);
+            toneGain.gain.setValueAtTime(0.8 * volume, audioContext.currentTime);
+            toneGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
             tone.connect(toneGain).connect(audioContext.destination);
-
-            noise.start();
             tone.start();
             tone.stop(audioContext.currentTime + 0.3);
 
-            // Flames on hit
-            for (let i = 0; i < 8; i++) createFlame();
+            for (let i = 0; i < 10; i++) createFlame();
         }
 
         function createFlame() {
             const flame = new THREE.Mesh(
-                new THREE.SphereGeometry(0.7 + Math.random(), 16, 16),
-                new THREE.MeshBasicMaterial({ 
-                    color: Math.random() > 0.5 ? 0xff8800 : 0xffff00,
-                    transparent: true,
-                    opacity: 0.95
-                })
+                new THREE.SphereGeometry(0.8 + Math.random() * 0.6, 16, 16),
+                new THREE.MeshBasicMaterial({ color: Math.random() > 0.4 ? 0xff5500 : 0xffee00, transparent: true, opacity: 0.95 })
             );
-            flame.position.set(
-                (Math.random() - 0.5) * 1.5,
-                18 + Math.random() * 4,
-                (Math.random() - 0.5) * 0.8
-            );
+            flame.position.set((Math.random() - 0.5) * 2, 19 + Math.random() * 5, (Math.random() - 0.5) * 1);
             scene.add(flame);
             flames.push(flame);
         }
 
         function animate(timestamp = 0) {
             requestAnimationFrame(animate);
-            const delta = Math.min((timestamp - lastFrameTime) / 16, 2.5);
+            const delta = Math.min((timestamp - (lastFrameTime || timestamp)) / 16, 2.8);
             lastFrameTime = timestamp;
 
             if (isRunning) {
-                swingAngle += 0.084 * delta;
-                sword.rotation.z = Math.sin(swingAngle) * 0.78;
+                swingAngle += 0.086 * delta;
+                sword.rotation.z = Math.sin(swingAngle) * 0.82;
 
-                if (Math.abs(Math.sin(swingAngle)) > 0.925) {
+                if (Math.abs(Math.sin(swingAngle)) > 0.93) {
                     playSnare();
                 }
             }
 
-            // Update flames
             for (let i = flames.length - 1; i >= 0; i--) {
                 const f = flames[i];
-                f.position.y += 0.4;
-                f.scale.multiplyScalar(0.915);
-                f.material.opacity *= 0.87;
-                if (f.material.opacity < 0.04) {
+                f.position.y += 0.45;
+                f.scale.multiplyScalar(0.91);
+                f.material.opacity *= 0.86;
+                if (f.material.opacity < 0.05) {
                     scene.remove(f);
                     flames.splice(i, 1);
                 }
@@ -215,6 +213,7 @@
             renderer.render(scene, camera);
         }
 
+        // Start/Stop Button
         document.getElementById('toggleBtn').addEventListener('click', () => {
             isRunning = !isRunning;
             const btn = document.getElementById('toggleBtn');
@@ -223,10 +222,7 @@
         });
 
         document.addEventListener('keydown', e => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                document.getElementById('toggleBtn').click();
-            }
+            if (e.code === 'Space') document.getElementById('toggleBtn').click();
         });
     </script>
 </body>
