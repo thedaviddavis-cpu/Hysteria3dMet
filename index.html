@@ -20,13 +20,13 @@
         .hysteria { color: #ffaa00; font-size: 1.6em; margin: 5px 0 10px 0; letter-spacing: 6px; }
         .bpm { color: #00ffcc; font-size: 2.5em; text-shadow: 0 0 25px #00ffcc; }
 
-        button {
-            position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+        #toggleBtn {
+            position: absolute; top: 30px; right: 30px;
             padding: 16px 50px; background: #e60012; color: white; border: none;
             border-radius: 50px; font-size: 20px; font-weight: bold; cursor: pointer; 
-            z-index: 100; box-shadow: 0 0 25px rgba(230,0,18,0.8);
+            z-index: 200; box-shadow: 0 0 25px rgba(230,0,18,0.9);
         }
-        button:hover { background: #ff1a1a; }
+        #toggleBtn:hover { background: #ff1a1a; }
 
         #controls {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -45,7 +45,7 @@
             color: #ffaa00; font-size: 1.2em; margin-bottom: 6px; font-weight: bold;
         }
         .slider-container {
-            display: flex; align-items: center; gap: 10px;
+            display: flex; align-items: center; gap: 12px;
         }
         input[type="range"] {
             flex: 1; accent-color: #ff0033;
@@ -132,7 +132,7 @@
             window.addEventListener('resize', onResize);
         }
 
-        function createCharacter(x, y, z, rotation) { /* same as before */ 
+        function createCharacter(x, y, z, rotation) {
             const group = new THREE.Group();
             const body = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 16), new THREE.MeshPhongMaterial({ color: 0x222222 }));
             body.position.y = 3.5; group.add(body);
@@ -221,17 +221,12 @@
             renderer.render(scene, camera);
         }
 
-        // Button & Slider Setup
-        document.getElementById('toggleBtn').addEventListener('click', function() {
+        // ====================== EVENT LISTENERS ======================
+        document.getElementById('toggleBtn').addEventListener('click', () => {
             isRunning = !isRunning;
             const btn = document.getElementById('toggleBtn');
-            if (isRunning) {
-                btn.textContent = "STOP THE RIFF";
-                btn.style.background = "#00cc66";
-            } else {
-                btn.textContent = "START THE RIFF";
-                btn.style.background = "#e60012";
-            }
+            btn.textContent = isRunning ? "STOP THE RIFF" : "START THE RIFF";
+            btn.style.background = isRunning ? "#00cc66" : "#e60012";
         });
 
         document.getElementById('volumeSlider').addEventListener('input', (e) => {
@@ -246,7 +241,7 @@
             }
         });
 
-        // Start the app
+        // Initialize everything
         init();
         animate();
         updateDioEyes();
